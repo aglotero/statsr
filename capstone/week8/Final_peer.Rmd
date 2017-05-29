@@ -1,0 +1,484 @@
+---
+title: "Peer Assessment II"
+output:
+  html_document: 
+    pandoc_args: [
+      "--number-sections",
+    ]
+---
+
+# Background
+
+As a statistical consultant working for a real estate investment firm, your task is to develop a model to predict the selling price of a given home in Ames, Iowa. Your employer hopes to use this information to help assess whether the asking price of a house is higher or lower than the true value of the house. If the home is undervalued, it may be a good investment for the firm.
+
+# Training Data and relevant packages
+
+In order to better assess the quality of the model you will produce, the data have been randomly divided into three separate pieces: a training data set, a testing data set, and a validation data set. For now we will load the training data set, the others will be loaded and used later.
+
+```{r load, message = FALSE}
+setwd("~/coursera/statistics/capstone/week8/")
+
+load("ames_train.Rdata")
+```
+
+Use the code block below to load any necessary packages
+
+```{r packages, message = FALSE}
+library(statsr)
+library(MASS)
+library(dplyr)
+library(BAS)
+
+library(pander)
+panderOptions('table.split.table', Inf)
+library(ggplot2)
+
+```
+
+## Part 1 - Exploratory Data Analysis (EDA)
+
+When you first get your data, it's very tempting to immediately begin fitting models and assessing how they perform.  However, before you begin modeling, it's absolutely essential to explore the structure of the data and the relationships between the variables in the data set.
+
+Do a detailed EDA of the ames_train data set, to learn about the structure of the data and the relationships between the variables in the data set (refer to Introduction to Probability and Data, Week 2, for a reminder about EDA if needed). Your EDA should involve creating and reviewing many plots/graphs and considering the patterns and relationships you see. 
+
+After you have explored completely, submit the three graphs/plots that you found most informative during your EDA process, and briefly explain what you learned from each (why you found each informative).
+
+### Price By Area
+
+Applying log on price and area we got a good correlation between this two variables.
+
+```{r creategraphs_1}
+ames_train %>%
+  select(price, area) %>%
+  ggplot(aes(x= log(area), y = log(price))) + 
+  geom_point() + stat_smooth(method=lm)
+```
+
+With a string correlation:
+
+```{r creategraphs_1_summary}
+model <- lm(ames_train, formula = log(price) ~log(area))
+summary(model)
+```
+
+```{r creategraphs_1_residuals}
+plot(model$residuals)
+```
+
+This indicates that the residuals are nearnly normal and the variability is constant.
+
+
+### NAs on dataset
+
+Let's see how NA values are distribuited by the data set
+
+```{r summary_NAs}
+na_count <- sapply(ames_train, function(y) sum(length(which(is.na(y))))) 
+na_count <- na_count %>% as.data.frame() 
+na_count <- data.frame(variable = rownames(na_count), v = na_count)
+names(na_count) <- c("variable", "value")
+na_count <- na_count %>%
+  arrange(desc(value))
+
+na_count$variable <- factor(na_count$variable)
+
+na_count %>%
+  filter(value > 50) %>%
+  arrange(desc(value)) %>%
+  ggplot(aes(x = reorder(variable, value), y = value, fill = value)) + 
+  geom_bar(stat = "identity")
+```
+
+Six variables are responsible for almost all NAs in dataset, now we are awareness about this issue, so our modeling process will be more effective.
+
+### Quality/Condition vs Price
+
+```{r creategraphs_3}
+ames_train %>%
+  select(Overall.Qual, Overall.Cond, price) %>%
+  ggplot(aes(group=Overall.Qual, x= factor(Overall.Qual), y = log(price))) + 
+  geom_boxplot()
+```
+
+```{r creategraphs_3b}
+ames_train %>%
+  select(Overall.Cond, price) %>%
+  ggplot(aes(x= factor(Overall.Cond), y = log(price))) + 
+  geom_boxplot()
+
+```
+
+
+The overall condition of a house has a increase in the price until reach 5, after that the price varies but does not increases too much, on the other hand the quality of the materials has a linear improvement in house price.
+
+It is funny (to me) that the intuition of House Condition must be high related with House Quality falls to ground.
+
+
+* * *
+
+
+## Part 2 - Development and assessment of an initial model, following a semi-guided process of analysis
+
+### Section 2.1 An Initial Model
+In building a model, it is often useful to start by creating a simple, intuitive initial model based on the results of the exploratory data analysis. (Note: The goal at this stage is **not** to identify the "best" possible model but rather to choose a reasonable and understandable starting point. Later you will expand and revise this model to create your final model.
+
+Based on your EDA, select *at most* 10 predictor variables from `ames_train` and create a linear model for `price` (or a transformed version of price) using those variables. Provide the *R code* and the *summary output table* for your model, a *brief justification* for the variables you have chosen, and af *brief discussion* of the model results in context (focused on the variables that appear to be important predictors and how they relate to sales price).
+
+* * *
+
+```{r fit_model}
+
+model <- lm(data = ames_train, 
+            formula = log(price) ~ log(area) + log(Lot.Area) + Neighborhood + Overall.Qual + Year.Built + Exter.Qual + Heating + Sale.Condition + Kitchen.Qual + Bedroom.AbvGr)
+
+summary(model)
+
+```
+
+#### Why these variables ?
+
+* *log(area)* and *log(Lot.Area)* : transforming these to log we increse the correlation with log(price)
+* Neighborhood : EDA has shown a good correlation with log(price)
+* Overall.Qual : EDA has shown a good correlation with log(price)
+* Year.Built : EDA has shown a good correlation with log(price)
+* Exter.Qual : EDA has shown a good correlation with log(price)
+* Heating : EDA has shown a good correlation with log(price)
+* Sale.Condition : EDA has shown a good correlation with log(price)
+* Kitchen.Qual : EDA has shown a good correlation with log(price)
+* Bedroom.AbvGr : EDA has shown a good correlation with log(price)
+
+#### Why these variables are importants ?
+
+Each variable has shown on EDA some relation with the **log(price)** variable, using this intuitive set we could get a Adjusted R-squared of  `0.8635`, pretty good for a first model.
+
+* * *
+
+### Section 2.2 Model Selection
+
+Now either using `BAS` another stepwise selection procedure choose the "best" model you can, using your initial model as your starting point. Try at least two different model selection methods and compare their results. Do they both arrive at the same model or do they disagree? What do you think this means?
+
+* * *
+
+#### Using stepwise AIC
+
+```{r model_select_AIC}
+
+model_AIC <- stepAIC(model, direction = c('backward'), k = 2, steps = 90000)
+summary_AIC <- summary(model)
+
+```
+
+Using AIC model selection criteria we got the same original model with Adj. R^2 of `r summary_AIC$adj.r.squared` and R^2 of `r summary_AIC$r.squared`.
+
+#### Using stepwise BIC
+
+```{r model_select_BIC}
+stepAIC(model, direction = c('both'), k = log(nrow(ames_train)))
+
+model_BIC <- lm(formula = log(price) ~ log(area) + log(Lot.Area) + Overall.Qual + 
+    Year.Built + Sale.Condition + Kitchen.Qual + Bedroom.AbvGr, 
+    data = ames_train)
+
+summary_BIC <- summary(model_BIC)
+```
+
+Using BIC model selection criteria we got a simple (smaller) model with Adj. R^2 of `r summary_BIC$adj.r.squared` and R^2 of `r summary_BIC$r.squared`.
+
+#### Model choosed
+
+I will continue with the original model, as he has a better Adj. R^2.
+
+* * *
+
+### Section 2.3 Initial Model Residuals
+One way to assess the performance of a model is to examine the model's residuals. In the space below, create a residual plot for your preferred model from above and use it to assess whether your model appears to fit the data well. Comment on any interesting structure in the residual plot (trend, outliers, etc.) and briefly discuss potential implications it may have for your model and inference / prediction you might produce.
+
+* * *
+
+```{r model_resid}
+plot(model$residuals ^2)
+```
+
+
+The residuals are normaly distributed with constant variance.
+
+We have some outliers :
+
+```{r}
+head(sort(model$residuals^2, decreasing = TRUE), n = 3) %>%
+  pander()
+```
+
+```{r}
+ames_train[c(428, 310, 741), ] %>%
+  dplyr::select(price, area, Lot.Area, Neighborhood, Overall.Qual, Year.Built, Exter.Qual, Heating, Sale.Condition, Kitchen.Qual, Bedroom.AbvGr) %>%
+  pander()
+```
+
+* * *
+
+### Section 2.4 Initial Model RMSE
+
+You can calculate it directly based on the model output. Be specific about the units of your RMSE (depending on whether you transformed your response variable). The value you report will be more meaningful if it is in the original units (dollars).
+
+* * *
+
+```{r model_rmse}
+
+rmse_in_dollar <- sqrt(sum((exp(model$fitted.values) - ames_train$price) ^ 2) / nrow(ames_train))
+
+```
+
+The USD\$ RMSE of the model is `r paste0("USD$ ", formatC(as.numeric(rmse_in_dollar), format="f", digits=2, big.mark=",", decimal.mark = "."))`.
+
+As the RMSE is less than USD$ 100,000 we can assume that the model has no problems.
+
+* * *
+
+### Section 2.5 Overfitting 
+
+The process of building a model generally involves starting with an initial model (as you have done above), identifying its shortcomings, and adapting the model accordingly. This process may be repeated several times until the model fits the data reasonably well. However, the model may do well on training data but perform poorly out-of-sample (meaning, on a dataset other than the original training data) because the model is overly-tuned to specifically fit the training data. This is called “overfitting.” To determine whether overfitting is occurring on a model, compare the performance of a model on both in-sample and out-of-sample data sets. To look at performance of your initial model on out-of-sample data, you will use the data set `ames_test`.
+
+```{r loadtest, message = FALSE}
+load("ames_test.Rdata")
+```
+
+Use your model from above to generate predictions for the housing prices in the test data set.  Are the predictions significantly more accurate (compared to the actual sales prices) for the training data than the test data?  Why or why not? Briefly explain how you determined that (what steps or processes did you use)?
+
+* * *
+
+```{r initmodel_test}
+
+ames_test_normalized <- ames_test %>%
+  filter(Neighborhood != 'Landmrk')
+
+test_predictions <- predict(model, newdata = ames_test_normalized)
+
+rmse_test_in_dollar <- sqrt(sum((exp(test_predictions) - ames_test_normalized$price) ^ 2) / nrow(ames_test_normalized))
+
+```
+
+First the test data has a new level (Landmrk) on the `Neighborhood` variable, I had to filter the test data, as the model doesn't seen this level on training, he is unable to predict values.
+
+The USD\$ RMSE of the model is `r paste0("USD$ ", formatC(as.numeric(rmse_test_in_dollar), format="f", digits=2, big.mark=",", decimal.mark = "."))`, smallert than the RMSE on training, so the predictions are accurate.
+
+* * *
+
+**Note to the learner:** If in real-life practice this out-of-sample analysis shows evidence that the training data fits your model a lot better than the test data, it is probably a good idea to go back and revise the model (usually by simplifying the model) to reduce this overfitting. For simplicity, we do not ask you to do this on the assignment, however.
+
+## Part 3 Development of a Final Model
+
+Now that you have developed an initial model to use as a baseline, create a final model with *at most* 20 variables to predict housing prices in Ames, IA, selecting from the full array of variables in the dataset and using any of the tools that we introduced in this specialization.  
+
+Carefully document the process that you used to come up with your final model, so that you can answer the questions below.
+
+### Section 3.1 Final Model
+
+Provide the summary table for your model.
+
+* * *
+
+```{r model_playground}
+
+#select only the used columns and remove the NAs
+ames_train_normalized <- ames_train %>%
+  dplyr::select(price, area, Lot.Area, Neighborhood, Overall.Qual, Year.Built, Exter.Qual, Heating, Sale.Condition , Kitchen.Qual, Bedroom.AbvGr,
+                    TotRms.AbvGrd, Fireplaces, Total.Bsmt.SF, Year.Remod.Add, Roof.Style, Lot.Config, Lot.Frontage,Mas.Vnr.Type, Foundation, Paved.Drive, Garage.Area, Overall.Cond,House.Style) %>%
+  na.omit()
+
+
+#First model (all variables)
+final_model <- lm(data = ames_train_normalized,
+                  formula = log(price) ~ 
+                    log(area) + log(Lot.Area) + Neighborhood + Overall.Qual + Year.Built + Exter.Qual + Heating + Sale.Condition + Kitchen.Qual + Bedroom.AbvGr + 
+                    TotRms.AbvGrd + Fireplaces + Total.Bsmt.SF + Year.Remod.Add + Roof.Style + Lot.Config + log(Lot.Frontage) + Mas.Vnr.Type + Foundation + Paved.Drive + Garage.Area + Overall.Cond + House.Style)
+
+
+#Using BIC to select the final model
+stepAIC(final_model, direction = c('both'), k = log(nrow(ames_train_normalized)))
+
+#Fit the final model
+final_model <- lm(data = ames_train_normalized,
+                  formula = log(price) ~ log(area) + log(Lot.Area) + Overall.Qual + Year.Built + 
+    Sale.Condition + Bedroom.AbvGr + Fireplaces + Total.Bsmt.SF + 
+    Garage.Area + Overall.Cond)
+
+#summary(final_model)
+
+#Calculat the RMSE on ames_train
+final_model_rmse_train_in_dollar <- sqrt(sum((exp(final_model$fitted.values) - ames_train_normalized$price) ^ 2) / nrow(ames_train_normalized))
+
+#Calculat the RMSE on ames_test
+final_model_test_predictions <- predict(final_model, newdata = ames_test_normalized)
+final_model_rmse_test_in_dollar <- sqrt(sum((exp(final_model_test_predictions) - ames_test_normalized$price) ^ 2) / nrow(ames_test_normalized))
+
+```
+
+* * *
+
+### Section 3.2 Transformation
+
+Did you decide to transform any variables?  Why or why not? Explain in a few sentences.
+
+* * *
+
+All variables related with Area I was transformed to `log` due to the fact that this transformation improves the correlational coeficient with `log(price)`.
+
+* * *
+
+### Section 3.3 Variable Interaction
+
+Did you decide to include any variable interactions? Why or why not? Explain in a few sentences.
+
+* * *
+
+As I'm a quite late to do the exercice I decide to skip this variable interactions.
+
+* * *
+
+### Section 3.4 Variable Selection
+
+What method did you use to select the variables you included? Why did you select the method you used? Explain in a few sentences.
+
+* * *
+
+I'm using the BIC stepwise criteria, to get the best simplest model possible.
+
+* * *
+
+### Section 3.5 Model Testing
+
+How did testing the model on out-of-sample data affect whether or how you changed your model? Explain in a few sentences.
+
+* * *
+
+On a real-life case we need to run from overfitting , so testing the model on a out-of-sample will give to us the notion if the model is overfitting  or not. If yes, we need to return to modeling and adjust the variables.
+
+* * *
+
+## Part 4 Final Model Assessment
+
+### Section 4.1 Final Model Residual
+
+For your final model, create and briefly interpret an informative plot of the residuals.
+
+* * *
+
+```{r}
+plot(final_model$residuals) 
+```
+
+The residuals are normaly distributed, even with these outliers:
+
+```{r}
+head(sort(final_model$residuals^2, decreasing = TRUE), n = 3) %>%
+  pander()
+```
+
+The data of each outlier:
+
+```{r}
+ames_train[c(365, 269, 622), ] %>%
+  dplyr::select(price, area, Lot.Area, Neighborhood, Overall.Qual, Year.Built, Exter.Qual, Heating, Sale.Condition , Kitchen.Qual, Bedroom.AbvGr,
+                    TotRms.AbvGrd, Fireplaces, Total.Bsmt.SF, Year.Remod.Add, Roof.Style, Lot.Config, Lot.Frontage,Mas.Vnr.Type, Foundation, Paved.Drive, Garage.Area, Overall.Cond,House.Style) %>%
+  pander()
+```
+
+* * *
+
+### Section 4.2 Final Model RMSE
+
+For your final model, calculate and briefly comment on the RMSE.
+
+* * *
+
+The USD\$ train RMSE of the model is `r paste0("USD$ ", formatC(as.numeric(final_model_rmse_train_in_dollar), format="f", digits=2, big.mark=",", decimal.mark = "."))`.
+
+The USD\$ test RMSE of the model is `r paste0("USD$ ", formatC(as.numeric(final_model_rmse_test_in_dollar), format="f", digits=2, big.mark=",", decimal.mark = "."))`.
+
+As the RMSE on test is less than on training we can assume that there is no overfitting occurring here.
+
+* * *
+
+### Section 4.3 Final Model Evaluation
+
+What are some strengths and weaknesses of your model?
+
+* * *
+
+**strengths** : the model generalize well, and has a low RMSE on test set.
+**weaknesses** : if a new instance of house came with new levels the model is unable to predict the price.
+
+* * *
+
+### Section 4.4 Final Model Validation
+
+Testing your final model on a separate, validation data set is a great way to determine how your model will perform in real-life practice. 
+
+You will use the “ames_validation” dataset to do some additional assessment of your final model. Discuss your findings, be sure to mention:
+* What is the RMSE of your final model when applied to the validation data?  
+* How does this value compare to that of the training data and/or testing data?
+* What percentage of the 95% predictive confidence (or credible) intervals contain the true price of the house in the validation data set?  
+* From this result, does your final model properly reflect uncertainty?
+
+```{r loadvalidation, message = FALSE}
+load("ames_validation.Rdata")
+```
+
+* * *
+
+```{r model_validate}
+
+validation_predictions <- predict(final_model, newdata = ames_validation, interval="predict", level = 0.95) %>%
+  as.data.frame()
+
+rmse_validation_in_dollar <- sqrt(sum((exp(validation_predictions$fit) - ames_validation$price) ^ 2) / nrow(ames_validation))
+
+newdata <- data.frame(exp(validation_predictions), price = ames_validation$price)
+
+
+```
+
+1. What is the RMSE of your final model when applied to the validation data?  
+
+The USD\$ RMSE of the model is `r paste0("USD$ ", formatC(as.numeric(rmse_validation_in_dollar), format="f", digits=2, big.mark=",", decimal.mark = "."))`.
+
+2. How does this value compare to that of the training data and/or testing data?
+
+The value is smaller that the train and test set.
+
+3. What percentage of the 95% predictive confidence (or credible) intervals contain the true price of the house in the validation data set?  
+
+Checking with the C.I. of 95% how many predicions contain the true value:
+
+```{r}
+newdata %>%
+  mutate(in_credible_interval = (price >= lwr && price <= upr)) %>%
+  group_by(in_credible_interval) %>%
+  summarise(total = n() / nrow(newdata) * 100) %>%
+  pander()
+```
+
+4. From this result, does your final model properly reflect uncertainty?
+
+It is strange that the model has 100% of accuracy on a 95% credible interval, on a real life situation we need to go back to modeling and assess the reasoning about this behaviour.
+
+* * *
+
+## Part 5 Conclusion
+
+Provide a brief summary of your results, and a brief discussion of what you have learned about the data and your model. 
+
+* * *
+
+NA values has a huge impact on with variables whe pick to the model.
+
+The final model performs very well, the RMSE decreases on each data set.
+
+BIC selection criteria selects a good, and samll, model.
+
+Transform the response variable to `log` helps to build a better model, but can be tricky when you are calculating the RMSE.
+
+It was fun!
+
+* * *

@@ -1,0 +1,305 @@
+---
+title: "Peer Assessment I"
+output:
+  html_document: 
+    pandoc_args: [
+      "--number-sections",
+    ]
+---
+
+
+First, let us load the data and necessary packages:
+
+```{r load, message = FALSE}
+setwd("~/coursera/statistics/capstone/week4/")
+
+load("ames_train.Rdata")
+library(MASS)
+library(dplyr)
+library(pander)
+library(ggplot2)
+```
+
+#
+Make a labeled histogram (with 30 bins) of the ages of the houses in the data set, and describe the distribution.
+
+
+```{r Q1}
+# type your code for Question 1 here, and Knit
+
+ames_train %>%
+  select(Year.Built) %>%
+  filter(!is.na(Year.Built)) %>%
+  mutate(age = 2017 - Year.Built) %>%
+  ggplot(aes(x=age)) + 
+  geom_histogram(bins = 30, show.legend = TRUE)
+
+```
+
+
+* * *
+
+This is a multimodal distribution, probably representing each economic growth cycle.
+It is clear that the 1960's baby boom and the 2000's real estate bubble are shown in the plot.
+Another interesting point is the high number of new houses built in the last three years.
+
+* * *
+
+
+#
+The mantra in real estate is "Location, Location, Location!" Make a graphical display that relates a home price to its neighborhood in Ames, Iowa. Which summary statistics are most appropriate to use for determining the most expensive, least expensive, and most heterogeneous (having the most variation in housing price) neighborhoods? Report which neighborhoods these are based on the summary statistics of your choice. Report the value of your chosen summary statistics for these neighborhood.s
+
+
+```{r Q2}
+# type your code for Question 2 here, and Knit
+
+ames_train %>%
+  select(Neighborhood, price) %>%
+  group_by(Neighborhood) %>%
+  ggplot(aes(x=Neighborhood, y = price)) + 
+  geom_boxplot(show.legend = TRUE) +
+  coord_flip()
+
+```
+
+
+* * *
+
+We can use the `median` to assess with neighborhood is most expensive.
+
+```{r}
+ames_train %>%
+  group_by(Neighborhood) %>%
+  summarise(median=median(price)) %>%
+  arrange(desc(median)) %>%
+  head(n=1) %>%
+  pander()
+
+```
+
+We can use the `median` to assess with neighborhood is least expensive.
+
+```{r}
+ames_train %>%
+  group_by(Neighborhood) %>%
+  summarise(median=median(price)) %>%
+  arrange(median) %>%
+  head(n=1) %>%
+  pander()
+
+```
+
+We can use the IQR to see how the price spreads per neighborhood.
+
+We are interested in neighborhood with a centrade IQR  like `GrnHill`.
+
+For the most heterogeneous neighborhood we use the variance:
+
+```{r}
+ames_train %>%
+  select(Neighborhood, price) %>%
+  group_by(Neighborhood) %>%
+  summarize(variance = var(price)) %>%
+  arrange(desc(variance)) %>%
+  top_n(5, wt = variance)
+
+```
+
+So `StoneBr` is the most heterogeneous neighborhood.
+
+* * *
+
+# 
+
+Which variable has the largest number of missing values? Explain why it makes sense that there are so many missing values for this variable.
+
+```{r Q3}
+# type your code for Question 3 here, and Knit
+
+#Counting NA per column
+na_count <- sapply(ames_train, function(y) sum(length(which(is.na(y)))))
+sort(na_count, decreasing = TRUE) %>% as.data.frame() %>% head(n = 5)
+
+```
+
+
+* * *
+
+The `Pool.QC` variable has the large number of NAs. This may be due to fact that the majority of houses does nor have pool.
+
+
+* * *
+
+#
+
+We want to predict the natural log of the home prices. Candidate explanatory variables are lot size in square feet (Lot.Area), slope of property (Land.Slope), original construction date (Year.Built), remodel date (Year.Remod.Add), and the number of bedrooms above grade (Bedroom.AbvGr). Pick a model selection or model averaging method covered in the Specialization, and describe how this method works. Then, use this method to find the best multiple regression model for predicting the natural log of the home prices.
+
+* * *
+
+I'm using forward selection with adjusted R^2 criteria. In this model selection techinique we start with one variable so we will add variables until we cannot improve adjusted R^2.
+
+The possible variables are: `Lot.Area`, `Land.Slope`, `Year.Built`, `Year.Remod.Add`, `Bedroom.AbvGr`.
+
+First we built a model only with `Lot.Area`:
+
+```{r}
+
+model <- lm(log(price) ~ Lot.Area, ames_train)
+
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Land.Slope` to the current model:
+
+```{r}
+model <- lm(log(price) ~ Lot.Area + Land.Slope, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Year.Built` to the current model:
+
+```{r}
+model <- lm(log(price) ~ Lot.Area + Land.Slope + Year.Built, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Year.Remod.Add` to the current model:
+
+```{r}
+model <- lm(log(price) ~ Lot.Area + Land.Slope + Year.Built + Year.Remod.Add, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Bedroom.AbvGr` to the current model:
+
+```{r}
+model <- lm(log(price) ~ Lot.Area + Land.Slope + Year.Built + Year.Remod.Add + Bedroom.AbvGr, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Following this method we found a model with Adj R^2 of 0.55.
+
+
+* * *
+
+#
+
+Which home has the largest squared residual in the previous analysis (Question 4)? Looking at all the variables in the data set, can you explain why this home stands out from the rest (what factors contribute to the high squared residual and why are those factors relevant)?
+
+
+```{r Q5}
+# type your code for Question 5 here, and Knit
+
+plot(model$residuals ^2)
+
+```
+
+* * *
+
+This high point near index 400 is the house #428:
+
+```{r}
+head(sort(model$residuals^2, decreasing = TRUE), n = 1) %>%
+  pander()
+
+```
+
+```{r}
+ames_train[428, ] %>%
+  pander()
+```
+
+
+
+
+* * *
+
+#
+
+Use the same model selection method you chose in Question 4 to again find the best multiple regression model to predict the natural log of home prices, but this time **replacing Lot.Area with log(Lot.Area)**. Do you arrive at a model including the same set of predictors?
+
+
+The possible variables are: `log(Lot.Area)`, `Land.Slope`, `Year.Built`, `Year.Remod.Add`, `Bedroom.AbvGr`.
+
+First we built a model only with `log(Lot.Area)`:
+
+```{r}
+
+model <- lm(log(price) ~ log(Lot.Area), ames_train)
+
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Land.Slope` to the current model:
+
+```{r}
+model <- lm(log(price) ~ log(Lot.Area) + Land.Slope, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Year.Built` to the current model:
+
+```{r}
+model <- lm(log(price) ~ log(Lot.Area) + Land.Slope + Year.Built, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Year.Remod.Add` to the current model:
+
+```{r}
+model <- lm(log(price) ~ log(Lot.Area) + Land.Slope + Year.Built + Year.Remod.Add, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Now we add `Bedroom.AbvGr` to the current model:
+
+```{r}
+model <- lm(log(price) ~ log(Lot.Area) + Land.Slope + Year.Built + Year.Remod.Add + Bedroom.AbvGr, ames_train)
+print(paste0("adj.r.squared : ", summary(model)$adj.r.squared))
+```
+
+Following this method we found a model with Adj R^2 of 0.60.
+
+* * *
+
+#
+
+Do you think it is better to log transform Lot.Area, in terms of assumptions for linear regression? Make graphs of the predicted values of log home price versus the true values of log home price for the regression models selected for Lot.Area and log(Lot.Area). Referencing these two plots, provide a written support that includes a quantitative justification for your answer in the first part of question 7.
+
+```{r Q7}
+# type your code for Question 7 here, and Knit
+
+model <- lm(log(price) ~ log(Lot.Area), ames_train)
+
+```
+
+* * *
+
+Checking assumptions:
+
+1 - Residuals are nearly normal
+2 - The variability of the residuals is nearly constant
+3 - The residuals as independent
+4 - each variable is linearly related to the outcome
+
+```{r}
+plot(model$residuals)
+```
+
+We have one outlier (house 428), so we can consider that condition (1) is met.
+
+Also we see a random scatter around zero, so the condition (2) and (3) are met.
+
+```{r}
+ames_train %>%
+  select(price, Lot.Area) %>%
+  mutate(price = log(price), Lot.Area = log(Lot.Area)) %>%
+  ggplot(aes(x = Lot.Area, y = price)) + geom_point() + geom_smooth(method = lm)
+
+```
+
+This plot shows a light positive relation bwtween the two variables, so the condition 4 is met.
+
+So it is better to log transform Lot.Area.
+
+* * *

@@ -1,0 +1,317 @@
+---
+title: "Bayesian modeling and prediction for movies"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+setwd("~/coursera/statistics/bayesian/project")
+library(ggplot2)
+library(dplyr)
+library(statsr)
+library(BAS)
+```
+
+### Load data
+
+```{r load-data}
+load("movies.Rdata")
+```
+
+* * *
+
+## Part 1: Data
+
+Even though random sampling was used to create the sample, the origin of the data (rotten tomatoes and IMDB) has the responder bias, as the data is provided by volunteers. So we can't generalize the conclusions for all population, only to the US population.
+
+As random assignment was not used causality cannot be inferred.
+
+* * *
+
+## Part 2: Data manipulation
+
+### Creating feature_film variable
+
+```{r feature_film_var}
+
+movies <- movies %>%
+  mutate(feature_film = factor(ifelse(title_type == 'Feature Film', 'yes', 'no')) )
+
+movies %>%
+  select(feature_film) %>%
+  summary()
+
+```
+
+### Creating drama variable
+
+```{r drama_var}
+
+movies <- movies %>%
+  mutate(drama = factor(ifelse(genre == 'Drama', 'yes', 'no')) )
+
+movies %>%
+  select(drama) %>%
+  summary()
+
+```
+
+### Creating mpaa_rating_R variable
+
+```{r mpaa_rating_R_var}
+
+movies <- movies %>%
+  mutate(mpaa_rating_R = factor(ifelse(mpaa_rating == 'Unrated', 'no', 'yes')) )
+
+movies %>%
+  select(mpaa_rating_R) %>%
+  summary()
+
+```
+
+### Creating oscar_season variable
+
+```{r oscar_season_var}
+
+movies <- movies %>%
+  mutate(oscar_season = factor(ifelse(thtr_rel_month %in% c(10, 11, 12), 'yes', 'no')) )
+
+movies %>%
+  select(oscar_season) %>%
+  summary()
+
+```
+
+### Creating summer_season variable
+
+```{r summer_season_var}
+
+movies <- movies %>%
+  mutate(summer_season = factor(ifelse(thtr_rel_month %in% c(5, 6, 7), 'yes', 'no')) )
+
+movies %>%
+  select(summer_season) %>%
+  summary()
+
+```
+
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+### Evaluating the relationship of audience_score and feature_film
+
+```{r audience_score_and_feature_film}
+feature_film.bas <- bas.lm(audience_score ~ feature_film, 
+                    data = movies,
+                    prior="BIC", 
+                    modelprior=Bernoulli(1), bestmodel=rep(1,2), 
+                    n.models=1)
+
+
+feature_film.coef=coef(feature_film.bas)
+plot(feature_film.coef,subset=2:2, ask=F)
+
+```
+
+As the Bernoulli prior is 1 this variable shows a good predictor to audience_score variable.
+
+
+### Evaluating the relationship of audience_score and drama
+
+```{r audience_score_and_drama}
+drama.bas <- bas.lm(audience_score ~ drama, 
+                    data = movies,
+                    prior="BIC", 
+                    modelprior=Bernoulli(1), bestmodel=rep(1,2), 
+                    n.models=1)
+
+
+drama.coef=coef(drama.bas)
+plot(drama.coef,subset=2:2, ask=F)
+
+```
+
+As the Bernoulli prior is 1 this variable shows a good predictor to audience_score variable.
+
+### Evaluating the relationship of audience_score and mpaa_rating_R
+
+```{r audience_score_and_mpaa_rating_R}
+
+mpaa_rating_R.bas <- bas.lm(audience_score ~ mpaa_rating_R, 
+                    data = movies,
+                    prior="BIC", 
+                    modelprior=Bernoulli(1), bestmodel=rep(1,2), 
+                    n.models=1)
+
+
+mpaa_rating_R.coef=coef(mpaa_rating_R.bas)
+plot(mpaa_rating_R.coef,subset=2:2, ask=F)
+
+```
+
+As the Bernoulli prior is 1 this variable shows a good predictor to audience_score variable.
+
+### Evaluating the relationship of audience_score and oscar_season
+
+```{r audience_score_and_oscar_season}
+oscar_season.bas <- bas.lm(audience_score ~ oscar_season, 
+                    data = movies,
+                    prior="BIC", 
+                    modelprior=Bernoulli(1), bestmodel=rep(1,2), 
+                    n.models=1)
+
+
+oscar_season.coef = coef(oscar_season.bas)
+plot(oscar_season.coef,subset=2:2, ask=F)
+```
+
+As the Bernoulli prior is 1 this variable shows a good predictor to audience_score variable.
+
+### Evaluating the relationship of audience_score and summer_season
+
+```{r audience_score_and_summer_season}
+summer_season.bas <- bas.lm(audience_score ~ summer_season, 
+                    data = movies,
+                    prior="BIC", 
+                    modelprior=Bernoulli(1), bestmodel=rep(1,2), 
+                    n.models=1)
+
+
+summer_season.coef = coef(summer_season.bas)
+plot(summer_season.coef,subset=2:2, ask=F)
+```
+
+As the Bernoulli prior is 1 this variable shows a good predictor to audience_score variable.
+
+* * *
+
+## Part 4: Modeling
+
+Let's build a full model and analyze the BIC best model
+
+```{r modeling}
+
+variables <- c('Intercept', 'feature_film', 'drama','runtime', 'mpaa_rating_R', 'thtr_rel_year', 'oscar_season', 'summer_season', 'imdb_rating', 'imdb_num_votes', 'critics_score', 'best_pic_nom', 'best_pic_win', 'best_actor_win', 'best_actress_win', 'best_dir_win', 'top200_box')
+
+
+movies.lm <- lm(audience_score ~ feature_film +  drama +  runtime +  mpaa_rating_R +  thtr_rel_year +  oscar_season +  summer_season +  imdb_rating +  imdb_num_votes +  critics_score +  best_pic_nom +  best_pic_win +  best_actor_win +  best_actress_win +  best_dir_win +  top200_box, 
+                data = movies)
+
+```
+
+## Using Stepwise to find the best BIC.
+
+As shown in https://github.com/StatsWithR/figures/blob/master/04_bayesian_statistics/week_04/5.3.1_Bayesian_model_selection/R/5.3.1_Bayesian_model_selection.Rmd
+
+```{r}
+n = nrow(movies)
+movies.step = step(movies.lm, k=log(n), trace = FALSE)   # penalty for BIC rather than AIC
+movies.step
+
+```
+
+Using stepwise we found `runtime`, `imdb_rating` and `critics_score` as the variables for the best model.
+
+## Using bas.lm to find the best model
+
+```{r}
+movies.bic = bas.lm(audience_score ~ feature_film +  drama +  runtime +  mpaa_rating_R +  thtr_rel_year +  oscar_season +  summer_season +  imdb_rating +  imdb_num_votes +  critics_score +  best_pic_nom +  best_pic_win +  best_actor_win +  best_actress_win +  best_dir_win +  top200_box, data=movies, 
+                 prior="BIC", 
+                 modelprior=uniform())
+
+best = which.max(movies.bic$logmarg)  # this is the best BIC model
+bestmodel =  movies.bic$which[[best]]
+#bestmodel  # indices of the best model where 0 is the intercept
+bestgamma = rep(0, movies.bic$n.vars)
+# convert to a binary  vector where 1 means the variable was selected
+bestgamma[bestmodel + 1] = 1  
+bestgamma  # use this to fit the best BIC model
+
+movies.bestbic = bas.lm(audience_score ~ feature_film +  drama +  runtime +  mpaa_rating_R +  thtr_rel_year +  oscar_season +  summer_season +  imdb_rating +  imdb_num_votes +  critics_score +  best_pic_nom +  best_pic_win +  best_actor_win +  best_actress_win +  best_dir_win +  top200_box, data=movies, 
+                     prior="BIC", n.models=1,
+                     bestmodel=bestgamma, 
+                     modelprior= uniform())
+
+```
+
+After selecting the best model we got the following variables:
+
+```{r}
+variables[bestmodel + 1]
+```
+
+Using Stepwise or BAS we got the same variables (this is nice!).
+
+## Building the final model
+
+Now let's see the coeficients for this model:
+
+```{r}
+
+movies.bestbic = bas.lm(audience_score ~ runtime + imdb_rating + critics_score,
+                     data=movies, 
+                     prior = "BIC",
+                     modelprior=uniform())
+
+movies.coef = coef(movies.bestbic)
+
+out = confint(movies.coef)
+names = c("post mean", "post sd", colnames(out))
+movies.bic = cbind(movies.coef$postmean, movies.coef$postsd, out)
+colnames(movies.bic) = names
+rnames <- rownames(movies.bic)
+
+movies.bic %>%
+  as.data.frame() %>%
+  mutate(name = rnames) %>%
+  select(name, `post mean`, `post sd`, `2.5  %`, `97.5  %`,beta) %>%
+  filter (name %in% variables[bestmodel + 1])
+
+```
+
+We have also some random scatter arround zero:
+
+```{r}
+plot(movies.bestbic, which = 1)
+```
+
+* * *
+
+## Part 5: Prediction
+
+Predicting the 2016 movie [Ben-Hur (2016)](http://www.imdb.com/title/tt2638144/).
+
+```{r}
+new_movie <- data.frame(runtime = 125,
+                        imdb_rating = 5.7,
+                        critics_score = 4.6,
+                        audience_score = as.vector(58))
+                        
+predicted_score <- predict(movies.bestbic, new_movie, estimator = "BMA", se.fit=TRUE)
+
+as.numeric(predicted_score$fit)
+
+```
+
+
+
+* * *
+
+## Part 6: Conclusion
+
+Using stepwise or BAS to select a model with the lowest BIC value give to us the same results.
+
+When we build the model only with the selected variables we get strange priors.
+
+The prediction is close to the real value of 58.
+
+We can predict a score for a movie outside the range of model but this extrapolation is not recommended.

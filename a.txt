@@ -1,0 +1,137 @@
+On branch master
+
+Initial commit
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+
+	new file:   .gitignore
+	new file:   bayesian/avaliados/001.htm
+	new file:   bayesian/avaliados/001_arquivos/MathJax.xml
+	new file:   bayesian/avaliados/002.html
+	new file:   bayesian/avaliados/003.htm
+	new file:   bayesian/avaliados/004.html
+	new file:   bayesian/bayes_regression_Coursera_supplement.Rmd
+	new file:   bayesian/bayes_regression_Coursera_supplement.html
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/__packages
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/cv_34bcb3a334376f8a809f1927424ea71a.RData
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/cv_34bcb3a334376f8a809f1927424ea71a.rdb
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/cv_34bcb3a334376f8a809f1927424ea71a.rdx
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/outliers_e3fcc768b196ed9c6ca46abcd5866485.RData
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/outliers_e3fcc768b196ed9c6ca46abcd5866485.rdb
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/outliers_e3fcc768b196ed9c6ca46abcd5866485.rdx
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/rerun_dec3a25811a698cb920b558aa9f0e460.RData
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/rerun_dec3a25811a698cb920b558aa9f0e460.rdb
+	new file:   bayesian/bayes_regression_Coursera_supplement_cache/html/rerun_dec3a25811a698cb920b558aa9f0e460.rdx
+	new file:   bayesian/bayes_regression_Coursera_supplement_files/figure-html/ape-1.png
+	new file:   bayesian/bayes_regression_Coursera_supplement_files/figure-html/diag-1.png
+	new file:   bayesian/bayes_regression_Coursera_supplement_files/figure-html/rerun-1.png
+	new file:   bayesian/bayes_regression_Coursera_supplement_files/figure-html/residuals-1.png
+	new file:   bayesian/project/Bayesian Statistics - Project Rubric.htm
+	new file:   bayesian/project/Codebook for Movies dataset.htm
+	new file:   bayesian/project/bayesian_project.Rmd
+	new file:   bayesian/project/bayesian_project.html
+	new file:   bayesian/project/movies.Rdata
+	new file:   bayesian/week1/two_armed_bandit_Coursera.Rmd
+	new file:   bayesian/week2/credible_interval_Coursera.Rmd
+	new file:   bayesian/week3/bayesian_inference.Rmd
+	new file:   bayesian/week3/bayesian_inference.html
+	new file:   bayesian/week4/bayes_regression_Coursera.Rmd
+	new file:   bayesian/week4/bayes_regression_Coursera.html
+	new file:   bayesian/week4/bayes_regression_Coursera_cache/html/__packages
+	new file:   bayesian/week4/bayes_regression_Coursera_cache/html/bma_predict_30ec4bf6d1c0b1a8be3fc8397a67a739.RData
+	new file:   bayesian/week4/bayes_regression_Coursera_cache/html/bma_predict_30ec4bf6d1c0b1a8be3fc8397a67a739.rdb
+	new file:   bayesian/week4/bayes_regression_Coursera_cache/html/bma_predict_30ec4bf6d1c0b1a8be3fc8397a67a739.rdx
+	new file:   bayesian/week4/bayes_regression_Coursera_files/figure-html/scatter-score-bty_avg-1.png
+	new file:   bayesian/week4/bayes_regression_Coursera_files/figure-html/vis-BMA-1.png
+	new file:   capstone/week1/Course-1-LO.pdf
+	new file:   capstone/week1/Course-2-LO.pdf
+	new file:   capstone/week1/Course-3-LO.pdf
+	new file:   capstone/week1/Course-4-LO.pdf
+	new file:   capstone/week2/EDA_quiz.Rmd
+	new file:   capstone/week2/EDA_quiz.html
+	new file:   capstone/week2/ames_train.Rdata
+	new file:   capstone/week4/EDA_peer.html
+	new file:   capstone/week4/EDA_peer.rmd
+	new file:   capstone/week4/ames_train.Rdata
+	new file:   capstone/week4/corrigidos/EDA_peer_001.html
+	new file:   capstone/week4/corrigidos/EDA_peer_002.html
+	new file:   capstone/week4/corrigidos/EDA_peer_003.html
+	new file:   capstone/week5/Model_Selection_quiz.Rmd
+	new file:   capstone/week5/Model_Selection_quiz.html
+	new file:   capstone/week5/ames_train.Rdata
+	new file:   capstone/week6/Prediction_quiz.Rmd
+	new file:   capstone/week6/Prediction_quiz.html
+	new file:   capstone/week6/ames_test.Rdata
+	new file:   capstone/week6/ames_train.Rdata
+	new file:   capstone/week8/Final_peer.Rmd
+	new file:   capstone/week8/Final_peer.html
+	new file:   capstone/week8/ames_test.Rdata
+	new file:   capstone/week8/ames_train.Rdata
+	new file:   capstone/week8/ames_validation.Rdata
+	new file:   capstone/week8/corrigidos/Correcao_001.htm
+	new file:   capstone/week8/corrigidos/Correcao_002.htm
+	new file:   capstone/week8/corrigidos/Correcao_003.htm
+	new file:   inference/project/Intro to Data & Probability - Project Rubric.htm
+	new file:   inference/project/Race and the fear of losing the Job.html
+	new file:   inference/project/corrigidos/Statistical inference with the GSS data.htm
+	new file:   inference/project/corrigidos/dois/Statistical inference with the GSS data.htm
+	new file:   inference/project/corrigidos/tres/Statistical inference with the GSS data.htm
+	new file:   inference/project/gss.Rdata
+	new file:   inference/project/gss.html
+	new file:   inference/project/stat_inf_project.Rmd
+	new file:   inference/week1/sampling_distributions_Coursera.Rmd
+	new file:   inference/week2/confidence_intervals_Coursera.Rmd
+	new file:   inference/week2/confidence_intervals_Coursera.html
+	new file:   inference/week3/inf_for_numerical_data_Coursera.Rmd
+	new file:   inference/week3/inf_for_numerical_data_Coursera.html
+	new file:   inference/week4/inf_for_categorical_data_Coursera.Rmd
+	new file:   inference/week4/inf_for_categorical_data_Coursera.html
+	new file:   linear-regression-model/project/model_project.Rmd
+	new file:   linear-regression-model/project/model_project.html
+	new file:   linear-regression-model/project/movies.Rdata
+	new file:   linear-regression-model/project/movies_codebook.html
+	new file:   linear-regression-model/project/reg_model_project_rubric.html
+	new file:   linear-regression-model/project/reviews/01_reg_model_project.html
+	new file:   linear-regression-model/project/reviews/02_reg_model_project.html
+	new file:   linear-regression-model/project/reviews/03_Reg_model_project_v11.html
+	new file:   linear-regression-model/week2/simple_regression_Coursera.Rmd
+	new file:   linear-regression-model/week2/simple_regression_Coursera.html
+	new file:   linear-regression-model/week3/01_index.mp4
+	new file:   linear-regression-model/week3/01_intro.pdf
+	new file:   linear-regression-model/week3/02_index.mp4
+	new file:   linear-regression-model/week3/02_multiple_predictors.pdf
+	new file:   linear-regression-model/week3/03_adjusted_r_squared.pdf
+	new file:   linear-regression-model/week3/03_index.mp4
+	new file:   linear-regression-model/week3/04_collinearity_parsimony.pdf
+	new file:   linear-regression-model/week3/04_index.mp4
+	new file:   linear-regression-model/week3/05_index.mp4
+	new file:   linear-regression-model/week3/05_inference_for_mlr.pdf
+	new file:   linear-regression-model/week3/06_index.mp4
+	new file:   linear-regression-model/week3/06_model_selection.pdf
+	new file:   linear-regression-model/week3/07_index.mp4
+	new file:   linear-regression-model/week3/07_model_diagnostics.pdf
+	new file:   linear-regression-model/week3/multiple_regression_Coursera.Rmd
+	new file:   linear-regression-model/week3/multiple_regression_Coursera.html
+	new file:   linear-regression-model/week3/os3-book.pdf
+	new file:   probability-intro/project/brfss2013.RData
+	new file:   probability-intro/project/brfss_codebook.html
+	new file:   probability-intro/project/corrigidos/Exploring the BRFSS data.htm
+	new file:   probability-intro/project/corrigidos/Exploring the BRFSS data_arquivos/MathJax.xml
+	new file:   probability-intro/project/intro_data_prob_project.Rmd
+	new file:   probability-intro/project/intro_data_prob_project.html
+	new file:   probability-intro/project/intro_data_prob_project_rubric.html
+	new file:   probability-intro/week1/intro_to_r_Coursera.Rmd
+	new file:   probability-intro/week1/intro_to_r_Coursera.html
+	new file:   probability-intro/week2/Week 2 Quiz _ Coursera.pdf
+	new file:   probability-intro/week2/Week 2 Quiz _ Coursera2.pdf
+	new file:   probability-intro/week2/intro_to_data_Coursera.Rmd
+	new file:   probability-intro/week2/intro_to_data_Coursera.html
+	new file:   probability-intro/week3/probability_Coursera.Rmd
+	new file:   probability-intro/week3/probability_Coursera.html
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+	a.txt
+

@@ -1,0 +1,658 @@
+---
+title: "Drinking and smoking habits, Asthma and the Key to happiness: what the brfss2013 data set can tell to us"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+
+#for table output
+library(pander)
+```
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+* * *
+
+## Part 1: Data
+
+The dataset documentation tell us that random sampling was used to select individuals with are 18+ that lives in its own housing or college housing, this method of sampling allow us to generalize the results only to US population, due to the characteristic that each individual in the population has the same chance to be choosen.
+
+The data was collected through phone (or cellphone) interviews, so we introduce the non-response bias, this means that only the individuals that where reached by the calls answered the survey, such that the sampling was no more representative for all population.
+
+We can't deduce causality due to the fact that random sampling was used, not random assignment.
+
+
+* * *
+
+## Part 2: Research questions
+
+### **Research quesion 1:**
+
+How College Housing smoking and drinking habits are diferent from those living in this own housing? On examining this question we could design better anti-alcohol and anti-smoking campaign for this diferent publics.
+
+### **Research quesion 2:**
+
+Asthma is known by a disease with close relation to emotional disorders^1^, how often a person with asthma tries to get emotional support? And how the asthmatics feel about themselves? Search for emotional support improves their lives? This question will confirm if asthma carriers really uses emotional support and will help us to improve the emotional support services, identifying if the service is effective .
+
+### **Research quesion 3:**
+
+Wealth really brings happiness? This is one of the big questions of humanity. Being owner of your own house can makes you more happy/healthier? Lets see, and how this finding is distributed between income?
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+### **Research quesion 1:**
+
+#### Smoking habits
+
+```{r warning=FALSE}
+
+brfss2013 %>% 
+  filter(colghous == 'Yes') %>% 
+  mutate(total_colghous = n()) %>%
+  group_by(X_rfsmok3, total_colghous) %>%
+  summarise(t = n()) %>%
+  mutate(pct = round(t / total_colghous * 100, 2)) %>%
+  ggplot(.,aes(x=X_rfsmok3, y = pct ), ) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(limits = c(0,110))  +
+  ggtitle("Percentage of smokers that living in a college housing") +
+  labs(x="Smoker?",y="Percentage") 
+
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  mutate(total_ownhous = n()) %>%
+  group_by(X_rfsmok3, total_ownhous) %>%
+  summarise(t = n()) %>%
+  mutate(pct = round(t / total_ownhous * 100, 2)) %>%
+  ggplot(.,aes(x=X_rfsmok3, y = pct ), ) +
+  geom_bar(stat="identity", ) +
+  scale_y_continuous(limits = c(0,110))  +
+  ggtitle("Percentage of smokers that living in a private housing") +
+  labs(x="Smoker?",y="Percentage") 
+```
+
+Here we notice that there are more smokers in college housing (`20.00%`) than private housing (`13.61`), at same time there are more people that "Don't know/Refused/Missing" in college housing (`13.33%`) than in private housing (`2.87%`).
+
+#### Drinking habits
+
+##### College Housing
+
+```{r warning=FALSE}
+brfss2013 %>% 
+  filter(colghous == 'Yes') %>% 
+  group_by(X_drnkmo4) %>%
+  summarise(t = log(n())) %>%
+  ggplot(.,aes(x=X_drnkmo4, y = t)) +
+  geom_point(stat="identity", ) +
+  stat_smooth(se=FALSE) +
+  ggtitle("Total drinks per month per person that lives in a college housing") +
+  labs(x="Quantity of drinks",y="Number of person (log scale)") 
+```
+
+The people of college housing does not drink a lot by month, the majority of people don't drink and those who drink more, drink about two drinks a day, that's not so much.
+
+##### Private Housing
+
+```{r warning=FALSE}
+
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  group_by(X_drnkmo4) %>%
+  summarise(t = n()) %>%
+  ggplot(.,aes(x=X_drnkmo4, y = t)) +
+  geom_point(stat="identity", ) +
+  geom_smooth(se=FALSE) +
+  ggtitle("Total drinks per month per person that lives in a private housing") +
+  labs(x="Quantity of drinks",y="Number of person (log scale)") 
+
+```
+
+It is dificult to see anything in this plot, there are a lot of people that doesn't drink, and very few that drink too much (200+ drinks per month) let's remove the people that doesn't drink and the people that drink less than 1 drink per day and those who drink too much (200+ drinks per month) to see what the plot shows.
+
+```{r warning=FALSE}
+
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  filter(X_drnkmo4 > 30 & X_drnkmo4 <= 200) %>%
+  group_by(X_drnkmo4) %>%
+  summarise(t = log(n())) %>%
+  ggplot(.,aes(x = X_drnkmo4, y = t)) +
+  geom_point(stat="identity", ) +
+  geom_smooth(se=FALSE) +
+  ggtitle("Total drinks per month per person that lives in a private housing") +
+  labs(x="Quantity of drinks",y="Number of person (log scale)") 
+
+```
+
+Now is more clear that we have a lot of people that drink more than one drink a day, but comparing on all sample population, this is significative?
+
+```{r}
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  mutate(total_pvtresd1 = n()) %>%
+  filter(X_drnkmo4 > 30 & X_drnkmo4 <= 200) %>%
+  group_by(total_pvtresd1) %>%
+  summarise(total_drinking = sum(n())) %>%
+  mutate(pct_total_drinking = round(total_drinking / total_pvtresd1, 5) * 100) %>%
+  select (pct_total_drinking) %>%
+  pander()
+
+```
+
+In fact `7.597%` of the sample that lives in private housing, has "heady drinking" habits.
+
+How healthy this `7.597%` of "heady drinkers" feel about himself?
+
+```{r}
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  filter(X_drnkmo4 > 30 & X_drnkmo4 <= 200) %>%
+  mutate(total_pvtresd1 = n()) %>%
+  group_by(total_pvtresd1, genhlth) %>%
+  summarise(total_genhlth = sum(n())) %>%
+  mutate(pct_total_genhlth = round(total_genhlth / total_pvtresd1, 5) * 100) %>%
+  ungroup() %>%
+  select (genhlth, pct_total_genhlth) %>%
+  ggplot(.,aes(x = genhlth, y = pct_total_genhlth)) +
+  geom_bar(stat="identity", ) +
+  geom_smooth(se=FALSE) +
+  ggtitle("General Health of drinkers") +
+  labs(x="General Health",y="% of drinkers") 
+
+```
+
+Surprisingly only `2.745%` of heavy drinkers had reported to be in "Poor" health state.
+
+Drinkink one drink a day may be considered ok for the social and health standards, but how much of the sample is represented by this behavior?
+
+```{r warning=FALSE}
+
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  filter(X_drnkmo4 > 0 & X_drnkmo4 <= 30) %>%
+  group_by(X_drnkmo4) %>%
+  summarise(t = log(n())) %>%
+  ggplot(.,aes(x = X_drnkmo4, y = t)) +
+  geom_point(stat="identity", ) +
+  geom_smooth(se=FALSE) +
+  ggtitle("Total drinks per month per person that lives in a private housing") +
+  labs(x="Quantity of drinks",y="Number of person (log scale)") 
+
+```
+
+There an evidence that this is a huge number, looking at the plot, let's see the data.
+
+```{r}
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  mutate(total_pvtresd1 = n()) %>%
+  filter(X_drnkmo4 > 0 & X_drnkmo4 <= 30) %>%
+  group_by(total_pvtresd1) %>%
+  summarise(total_drinking = sum(n())) %>%
+  mutate(pct_total_drinking = round(total_drinking / total_pvtresd1, 5) * 100) %>%
+  select (pct_total_drinking) %>%
+  pander()
+
+```
+
+The sample population that drink in a more "light" way represents `37.07%` of the sample that lives in private housing.
+
+How healthy this `37.07%` of "light drinkers" feel about himself?
+
+```{r}
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  filter(X_drnkmo4 > 0 & X_drnkmo4 <= 30) %>%
+  mutate(total_pvtresd1 = n()) %>%
+  group_by(total_pvtresd1, genhlth) %>%
+  summarise(total_genhlth = sum(n())) %>%
+  mutate(pct_total_genhlth = round(total_genhlth / total_pvtresd1, 5) * 100) %>%
+  ungroup() %>%
+  select (genhlth, pct_total_genhlth) %>%
+  ggplot(.,aes(x = genhlth, y = pct_total_genhlth)) +
+  geom_bar(stat="identity", ) +
+  geom_smooth(se=FALSE) +
+  ggtitle("General Health of light drinkers") +
+  labs(x="General Health",y="% of drinkers") 
+
+```
+
+The majority of "light drinkers" has reported a good ("Excellent", "Very good" or "Good") health state.
+
+```{r}
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  mutate(total_pvtresd1 = n()) %>%
+  filter(X_drnkmo4 > 0) %>%
+  group_by(total_pvtresd1) %>%
+  summarise(total_drinking = sum(n())) %>%
+  mutate(pct_total_drinking = round(total_drinking / total_pvtresd1, 5) * 100) %>%
+  select (pct_total_drinking) %>%
+  pander()
+
+```
+
+Considering all sample population that lives in private housing `44.89%` drink.
+
+How healthy this `44.89%` of drinkers feel about himself?
+
+```{r}
+brfss2013 %>% 
+  filter(pvtresd1 == 'Yes') %>% 
+  mutate(total_pvtresd1 = n()) %>%
+  group_by(total_pvtresd1, genhlth) %>%
+  summarise(total_genhlth = sum(n())) %>%
+  mutate(pct_total_genhlth = round(total_genhlth / total_pvtresd1, 5) * 100) %>%
+  ungroup() %>%
+  select (genhlth, pct_total_genhlth) %>%
+  ggplot(.,aes(x = genhlth, y = pct_total_genhlth)) +
+  geom_bar(stat="identity", ) +
+  geom_smooth(se=FALSE) +
+  ggtitle("General Health of all drinkers") +
+  labs(x="General Health",y="% of drinkers") 
+
+```
+
+The majority of drinkers has reported a good health state, and only `6.216%` had reported a "Poor" health state.
+
+#### Conclusions
+
+In matter of smoking there are no significant difference between the two strata, so we don't need to design specific anti-smoking campaigns, both populations will be impacted as the same by future campaigns.
+
+In other hand, drinking habits are very different. The college housing sample appears to don't get a problem with drinking. The sample that lives in private housing has.
+
+`44.89%` drink, `37.07%` have "light drinkink" habits and `7.597%` have "heavy drinking" habits, in each category the majority of people has reported good health state, this is counterintuitive, since heavy drinking causes a series of deseases and problems.
+
+We don't need different campaigns for college housing and private housing publics, we need a huge campaign to clarify the drinking effects and symptoms, since a few people has reported health problems.
+
+#### Summary of variables
+
+##### colghous : Do You Live In College Housing?
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(colghous, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### pvtresd1: Private Residence?
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(pvtresd1, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### X_rfsmok3: Current Smoking Calculated Variable
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(X_rfsmok3, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### genhlth: General Health
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(genhlth, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### X_drnkmo4: Computed Total Number Drinks A Month
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(X_drnkmo4, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+### **Research quesion 2:**
+
+```{r}
+
+total_asthma <- brfss2013 %>% 
+  filter(!is.na(asthmage)) %>%
+  nrow()
+
+total_asthma_emtsuprt <- brfss2013 %>% 
+  filter(!is.na(asthmage)) %>%
+  filter(!is.na(emtsuprt)) %>%
+  nrow()
+
+brfss2013 %>% 
+  filter(!is.na(asthmage)) %>%
+  select(emtsuprt) %>%
+  group_by(emtsuprt) %>%
+  summarise(t = round(n() / total_asthma * 100, 5)) %>%
+  ggplot(.,aes(x=emtsuprt, y = t ) ) +
+  geom_bar(stat="identity", ) +
+  ggtitle("Asthmatics and Emotional Support") +
+  labs(x="How Often Get Emotional Support Needed",y="Percentage") 
+
+```
+
+Here we have a problem with "Don't know/Not sure", "Refused", "[Missing]" values, the plot is very distorced, let's remove the NA values to clarify the things.
+
+```{r}
+
+brfss2013 %>% 
+  filter(!is.na(asthmage)) %>%
+  select(emtsuprt) %>%
+  filter(!is.na(emtsuprt )) %>%
+  group_by(emtsuprt) %>%
+  summarise(t = round(n() / total_asthma * 100, 5)) %>%
+  ggplot(.,aes(x=emtsuprt, y = t ) ) +
+  geom_bar(stat="identity", ) +
+  ggtitle("Asthmatics and Emotional Support") +
+  labs(x="How Often Get Emotional Support Needed",y="Percentage") 
+
+```
+
+Now we see that from those that answer the question, almost all asthmatics get emotional support. Now, how these individuals see himself?
+
+```{r}
+brfss2013 %>% 
+  filter(!is.na(asthmage)) %>%
+  select(emtsuprt, X_rfhlth) %>%
+  filter(emtsuprt %in% c('Always', 'Usually')) %>%
+  group_by(X_rfhlth) %>%
+  summarise(t = round(n() / total_asthma_emtsuprt * 100, 2)) %>%
+  ggplot(.,aes(x=X_rfhlth, y = t ) ) +
+  geom_bar(stat="identity", ) +
+  ggtitle("Asthmatics that get Emotional Support Always or Usually") +
+  labs(x="Would you say that in general your health is?",y="Percentage") 
+```
+
+`48.89%` of those asthmatics that get emotinal support report that theis health is "Good" or "Better than good", `43%` more than the `31.11%` reports "Fair" or "Poor" health
+
+```{r}
+brfss2013 %>% 
+  filter(!is.na(asthmage)) %>%
+  select(emtsuprt, X_rfhlth) %>%
+  filter(emtsuprt %in% c('Sometimes', 'Never')) %>%
+  group_by(X_rfhlth) %>%
+  summarise(t = round(n() / total_asthma_emtsuprt * 100, 2)) %>%
+  ggplot(.,aes(x=X_rfhlth, y = t ) ) +
+  geom_bar(stat="identity", ) +
+  ggtitle("Asthmatics that get Emotional Support Sometimes or Never") +
+  labs(x="Would you say that in general your health is?",y="Percentage") 
+```
+
+From those who get emotional support sometimes or never, the proportion of individuals that report "Fair" or "Poor" health is about three times higher than those that report "Good" or "Better" health status.
+
+```{r}
+
+brfss2013 %>% 
+  filter(!is.na(asthmage)) %>%
+  select(emtsuprt, X_rfhlth) %>%
+  filter(is.na(emtsuprt)) %>%
+  group_by(X_rfhlth) %>%
+  summarise(t = round(n() / total_asthma * 100, 2)) %>%
+  ggplot(.,aes(x=X_rfhlth, y = t ) ) +
+  geom_bar(stat="identity", ) +
+  ggtitle("Asthmatics that does not get emotional support") +
+  labs(x="Would you say that in general your health is?",y="Percentage") 
+```
+
+From those asthmatics that does not get emotional support, `36.82%` reports "Fair or Poor Health", incontrast of `59.83%` that reports "Good or Better Health", `0.34%` "Don't know/Not Sure, Refused or [Missing]".
+
+#### Conclusions
+
+A few asthmatics search to get emotional support, but from those get it we see `48.89%` reporting "Good or Betther Health", if those that does not get emotional support get it, we could increase the rate of "Good or Better Health".
+
+In general, emotional support shows effectiveness in asthmatics, those that does not get emotional support, reports "Fair or Poor" health status. Increasing access to this kind of treatment we will improve the life of these asthmatics.
+
+
+#### Summary of variables
+
+##### asthmage : Age At Asthma Diagnosis
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(asthmage, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### emtsuprt: How Often Get Emotional Support Needed
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(emtsuprt, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### X_rfhlth: Adults With Good Or Better Health
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(X_rfhlth, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+### **Research quesion 3:**
+
+```{r fig.width=12}
+
+total <- brfss2013 %>%
+  nrow()
+
+brfss2013 %>%
+  group_by(income2, hlthpln1) %>%
+  summarise(t = round(n() / total * 100, 2)) %>%
+  mutate(hlthpln1 = factor(ifelse(is.na(hlthpln1), "No answer", hlthpln1), labels = c ("No answer", "Yes", "No"))) %>%
+  ggplot(.,aes(x=income2, y = t, color=hlthpln1 ) ) +
+  geom_point() +
+  ggtitle("Income Level vs. Health Care Coverage") +
+  labs(x="Income Level", y="Health Care Coverage", color = "Percentage")
+
+```
+
+As we see, the health care coverage increases as income increases.
+
+```{r fig.width=12}
+
+renthom1_levels <- factor(c(levels(brfss2013$renthom1), "No answer"))
+
+brfss2013 %>%
+  mutate(renthom1 = factor(ifelse(is.na(renthom1), "No answer", renthom1), labels = renthom1_levels)) %>%
+  group_by(income2, renthom1) %>%
+  summarise(t = round(n() / total * 100, 2)) %>%
+  ggplot(.,aes(x=income2, y = t, color=renthom1 ) ) +
+  geom_point() +
+  ggtitle("Income Level vs. Own Or Rent Home") +
+  labs(x="Income Level", y="Percentage", color = "Own Or Rent Home")
+
+```
+
+As we see, percentage of house owners increases as income increases.
+
+```{r fig.width=12}
+
+X_rfhlth_levels <- factor(c(levels(brfss2013$X_rfhlth), "No answer"))
+
+brfss2013 %>%
+  mutate(X_rfhlth = factor(ifelse(is.na(X_rfhlth), "No answer", X_rfhlth), labels = X_rfhlth_levels)) %>%
+  group_by(income2, X_rfhlth) %>%
+  summarise(t = round(n() / total * 100, 2)) %>%
+  ggplot(.,aes(x=income2, y = t, color=X_rfhlth ) ) +
+  geom_point() +
+  ggtitle("Income Level vs. General Health") +
+  labs(x="Income Level", y="Percentage", color = "General Health")
+
+```
+
+As we see, percentage of answers "Good or Better Health"  increases as the income increases. And we notice a decline of answers "Fair of Poor Health" as the income increases, this indicates a correlation between this two variables.
+
+```{r fig.width=12}
+
+cvdinfr4_levels <- factor(c(levels(brfss2013$cvdinfr4), "No answer"))
+
+brfss2013 %>%
+  mutate(cvdinfr4 = factor(ifelse(is.na(cvdinfr4), "No answer", cvdinfr4), labels = cvdinfr4_levels)) %>%
+  group_by(income2, cvdinfr4) %>%
+  summarise(t = round(n() / total * 100, 2)) %>%
+  ggplot(.,aes(x=income2, y = t, color=cvdinfr4 ) ) +
+  geom_point() +
+  ggtitle("Income Level vs. Ever Diagnosed With Heart Attack") +
+  labs(x="Income Level", y="Percentage", color = "Ever Diagnosed With\nHeart Attack")
+
+```
+
+As we see, percentage of people ever diagnosed with heart attack decreases as income increases. The rate of diagnosed with heart attack seems to be constant through the income levels.
+
+```{r fig.width=12}
+
+qlactlm2_levels <- factor(c(levels(brfss2013$qlactlm2), "No answer"))
+
+brfss2013 %>%
+  mutate(qlactlm2 = factor(ifelse(is.na(qlactlm2), "No answer", qlactlm2), labels = qlactlm2_levels)) %>%
+  group_by(income2, qlactlm2) %>%
+  summarise(t = round(n() / total * 100, 2)) %>%
+  ggplot(.,aes(x=income2, y = t, color=qlactlm2 ) ) +
+  geom_point() +
+  ggtitle("Income Level vs. Activity Limitation Due To Health Problems") +
+  labs(x="Income Level", y="Percentage", color = "Activity Limitation\nDue To Health\nProblems")
+
+```
+
+As we see, percentage of people with no limitations due to health problemens increases as income increases. At same time the rate of people with activity limitations due to health problems seems to be constant through the income levels.
+
+
+```{r fig.width=12}
+
+poorhlth_flag_levels <- factor(c('Yes', 'No','No answer'))
+
+brfss2013 %>%
+  mutate(poorhlth_flag = factor(ifelse(is.na(poorhlth), 
+                                'No answer', 
+                                ifelse(poorhlth > 0, 
+                                       'Yes', 
+                                       'No')), labels = poorhlth_flag_levels)
+         ) %>%
+  group_by(income2, poorhlth_flag) %>%
+  summarise(t = round(n() / total * 100, 2)) %>%
+  ggplot(.,aes(x=income2, y = t, color=poorhlth_flag ) ) +
+  geom_point() +
+  ggtitle("Income Level vs. In the last 30 days\nsome poor physical or mental health keep you from doing your usual activities,\nsuch as self-care, work, or recreation?") +
+  labs(x="Income Level", y="Percentage", color = "Some poor health\nstate keep you from\ndoing things?")
+
+```
+
+We used the `poorhlth` variable to create a new one, a modification of `poorhlth`, that measures if in the last 30 days some poor physical or mental health keep you from doing your usual activities, such as self-care, work, or recreation.
+
+Both "Yes" and "No" answers grows with the income, but the "No" has a higher growth rate, overtaking "Yes" by far.
+
+#### Conclusions
+
+As the income increases, the life quality of the people increases too, this couldn't allows us to tell if money brings happiness, but we are allowed to say, by the data, that wealthy people has more access to health insurance, own housing, and a better general health status.
+I can believe that if we could spread the access to wealth producers, like Education, good macro-economy and an unbureaucratic State we could rise the income of the overall population, increasing the life quality for all.
+
+
+#### Summary of variables
+
+##### income2 : Income Level
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(income2, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### hlthpln1: Have Any Health Care Coverage
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(hlthpln1, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### renthom1: Own Or Rent Home
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(renthom1, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### X_rfhlth: Adults With Good Or Better Health
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(X_rfhlth, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### cvdinfr4: Ever Diagnosed With Heart Attack
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(cvdinfr4, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### qlactlm2: Activity Limitation Due To Health Problems
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(qlactlm2, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+##### poorhlth: Poor Physical Or Mental Health
+```{r warning=FALSE}
+brfss2013 %>%
+  mutate(total = n()) %>%
+  group_by(poorhlth, total) %>%
+  summarise(count = n()) %>%
+  mutate(pct = round(count / total * 100, 5)) %>%
+  select(count, pct)
+```
+
+## Part 4: Appendix
+
+1. [Psychological Factors in Asthma](http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2869336/)

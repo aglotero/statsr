@@ -1,0 +1,153 @@
+---
+title: "Statistical inference with the GSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+```
+
+### Load data
+
+Make sure your data and R Markdown files are in the same directory. When loaded
+your data file will be called `gss`. Delete this note when before you submit 
+your work. 
+
+```{r load-data}
+load("gss.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+Looking at the GSS web site (http://gss.norc.org/For-Survey-Participants) we found that the sampling method is random sampling households in America.
+
+This sampling method  allow us to generalize the results only to US population, due to the characteristic that each individual in the population has the same chance to be choosen.
+
+The data was collected through phone (or cellphone) interviews, so we introduce the non-response bias, this means that only the individuals that where reached by the calls answered the survey, such that the sampling was no more representative for all population.
+
+We can't deduce causality due to the fact that random sampling was used, not random assignment.
+
+
+* * *
+
+## Part 2: Research question
+
+**Race and the fear of losing the job**
+
+We are facing a global financial crisis, the economic growth and wealth seems to be far away from all citizens.
+How the perception of being fired is across the Races in US? If the crisis is for everyone, we expect do not see any diference between white, black and hispanic respondents.
+We will assume the "NOT LIKELY" a good state at the job, otherwise the respondent is at risk in the crisis.
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+First of all we need to build our "race" variable, due to the fact that GSS segregates the Hispanic in another field.
+
+Second we will built our "jobcondition" variable, to summarise all possible aswers in the "joblose" question, we will assume that the respondant has a "OK" situation if  he/she aswer 'Not Likely' and "NOK" otherwise.
+
+
+```{r create-vars}
+
+race_levels <- levels(gss$race)
+
+data <- gss %>%
+  select(joblose, race, hispanic) %>%
+  mutate(race_new = ifelse(is.na(gss$hispanic), race_levels[race], "Hispanic")) %>%
+  mutate(jobcondition = ifelse(joblose == 'Not Likely', "OK", "NOK")) %>%
+  select(joblose, jobcondition, race_new)
+
+data$jobcondition <- factor(data$jobcondition)
+data$race_new <- factor(data$race_new)
+
+```
+
+Below the plot of the percentage, per race, of chance in the next 12 months the respondent lose their job.
+
+```{r plot-lose-job}
+data %>%
+  group_by(race_new, jobcondition) %>%
+  summarise(qtd = n()) %>%
+  mutate(total = sum(qtd), pct = round(qtd / total * 100, 2)) %>%
+  filter(jobcondition == 'NOK') %>%
+  ggplot(.,aes(x=race_new, y = pct )) +
+  geom_bar(stat="identity") +  
+  scale_y_continuous(limits = c(0,100))  +
+  ggtitle("Per race, % of losing job in next 12 months") +
+  labs(x="Race",y="% of losing job") 
+
+```
+
+Below the plot of the percentage, per race, of chance in the next 12 months the respondent **not** lose their job.
+
+```{r plot-not-lose-job}
+data %>%
+  group_by(race_new, jobcondition) %>%
+  summarise(qtd = n()) %>%
+  mutate(total = sum(qtd), pct = round(qtd / total * 100, 2)) %>%
+  filter(jobcondition == 'OK') %>%
+  ggplot(.,aes(x=race_new, y = pct )) +
+  geom_bar(stat="identity") +  
+  scale_y_continuous(limits = c(0,100))  +
+  ggtitle("Per race, % of not losing job in next 12 months") +
+  labs(x="Race",y="% of not losing job") 
+```
+
+It sems that the overall confidence of lose the job is the same across the races, but the data provides strong evidence for this?
+
+* * *
+
+## Part 4: Inference
+
+Our null hypothesis is that the "race" and "jobcondition" are independent, so everyone is suffering in this crisis.
+
+Our alternative hypotesis is that the "race" and "joncondition" are dependent, so your race determines how much you will suffer in this crisis.
+
+Running the inference command using the "theoretical" method.
+```{r theoretical-inference, fig.width=12}
+
+inference(data = data, 
+          y=jobcondition,
+          x=race_new, 
+          type = "ht",
+          statistic = "proportion", 
+          success = "OK",
+          method = "theoretical", 
+          alternative = "greater")
+
+```
+
+
+Running the inference command using the "simulation" method.
+```{r theoretical-simulation, fig.width=12}
+
+inference(data = data, 
+          y=jobcondition,
+          x=race_new, 
+          type = "ht",
+          statistic = "proportion", 
+          success = "OK",
+          method = "simulation", 
+          alternative = "greater")
+
+```
+
+Using the default significance level of 0.05 for this analysis, we have:
+
+As the p-value is very, very, small we can reject the null hypothesis in favor of our alternative hypothesis.
+
+So depending on your race the crisis will threaten your job in different ways.

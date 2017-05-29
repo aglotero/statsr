@@ -1,0 +1,495 @@
+---
+title: "Modeling and prediction for movies"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+setwd("~/coursera/statistics/linear-regression-model/project")
+library(ggplot2)
+library(dplyr)
+library(statsr)
+
+#for table output
+library(pander)
+
+#for summary variables
+library(GGally)
+```
+
+### Load data
+
+```{r load-data}
+load("movies.Rdata")
+```
+
+* * *
+
+## Part 1: Data
+
+Even though random sampling was used to create the sample, the origin of the data (rotten tomatoes and IMDB) has the responder bias, as the data is provided by volunteers. So we can't generalize the conclusions for all population, only to the US population.
+
+As random assignment was not used causality cannot be inferred.
+
+* * *
+
+## Part 2: Research question
+
+Does a film made by Oscar winners, improves film rating ?
+
+If the data provides evidence that hiring a team of Oscar winners improves film rating, the studio could redirect their hiring efforts to contract only these professionals, to build better and profitable films.
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+### The response variable
+
+As the dataset provide two source of scores, is more pratical to unify theses scores.
+
+The IMDB scores has the range 0..10 and the Rotten Tomatos the range 0..100.
+
+As the follow summaries show, both scores are similar.
+
+```{r}
+summary(movies$imdb_rating) %>% pander()
+```
+```{r}
+summary(movies$audience_score) %>% pander()
+```
+
+```{r}
+summary(movies$critics_score) %>% pander()
+```
+
+Let's create our new score:
+
+```{r}
+movies$overall_score <-  (((movies$imdb_rating * 10) + movies$audience_score + movies$critics_score) / 3)
+
+summary(movies$overall_score) %>% pander()
+
+```
+
+### Summarize the Oscar features
+
+Let's put all information about Win a oscar in a single variable, so we will create a new variable, true if 
+
+```{r}
+movies$has_oscar <- as.factor(movies$best_actor_win == "yes" | movies$best_actress_win == "yes" | movies$best_dir_win == "yes" | movies$best_pic_win == "yes")
+
+```
+
+### Summarize years between movie release and DVD release
+```{r}
+movies$time_releases <- movies$dvd_rel_year - movies$thtr_rel_year
+```
+
+### The research question
+
+To verify if our research question has data, let's use the inference command.
+
+```{r}
+inference(y = overall_score, x = has_oscar, data = movies, type = "ht", statistic = "mean", success = TRUE, method = "theoretical", alternative = "greater")
+
+```
+
+As p-value is larger we fail to reject the null hypothesis. So we can assume that a film win or not a Oscar does not make difference in this score.
+
+### Possible variables
+
+In this dataset there are many variables that aren't useful to us, so we select the follow variables to work: 
+```{r}
+#save the old version
+movies_old <- movies
+```
+
+Removed `title` variable due to the fact that copy 
+
+```{r}
+movies$title <- NULL
+```
+
+Removed `studio` variable due to the fact that copy 
+
+```{r}
+movies$studio <- NULL
+```
+
+Removed `imdb_rating`, `imdb_num_votes`, `critics_rating`, `critics_score`, `audience_rating` and `audience_score` variables because we built our `overall_score` variable that unifies all these.
+
+```{r}
+movies$imdb_rating <- NULL
+movies$imdb_num_votes <- NULL
+movies$critics_rating <- NULL
+movies$critics_score <- NULL
+movies$audience_rating <- NULL
+movies$audience_score <- NULL
+```
+
+Removed `actor1`, `actor2`, `actor3`, `actor4`, `actor5` because these variables are used to build the `*_win` variables, so there is a high correlation between these variables.
+
+```{r}
+movies$actor1 <- NULL
+movies$actor2 <- NULL
+movies$actor3 <- NULL
+movies$actor4 <- NULL
+movies$actor5 <- NULL
+```
+
+Removed `best_actor_win`, `best_actress_win`, `best_dir_win`, `best_pic_win` because these variables are used to build the `has_oscar` variables, so there is a high correlation between these variables.
+
+```{r}
+movies$best_actor_win <- NULL
+movies$best_actress_win  <- NULL
+movies$best_dir_win  <- NULL
+movies$best_pic_win  <- NULL
+```
+
+Remove this two informational variables.
+
+```{r}
+movies$imdb_url <- NULL
+movies$rt_url <- NULL
+```
+
+Removed `dvd_rel_year`, `dvd_rel_day`, `dvd_rel_month`, `thtr_rel_year`, `thtr_rel_day`, `thtr_rel_month` because these variables are used to build the `time_releases` variables, so there is a high correlation between these variables.
+
+```{r}
+movies$dvd_rel_year <- NULL
+movies$thtr_rel_year <- NULL
+
+movies$dvd_rel_day <- NULL
+movies$thtr_rel_day <- NULL
+
+movies$dvd_rel_month <- NULL
+movies$thtr_rel_month <- NULL
+```
+
+Remaining variables.
+
+```{r}
+names(movies) %>% 
+  as.data.frame() %>% 
+  data.table::setnames(., c("variable")) %>% 
+  pander()
+
+```
+
+Next we replace NA in numeric variables by zero:
+
+```{r}
+movies$time_releases <- ifelse(is.na(movies$time_releases), 0, movies$time_releases)
+movies$runtime <- ifelse(is.na(movies$runtime), 0, movies$runtime)
+movies$director <- ifelse(is.na(movies$director), "Unknow", movies$director)
+```
+
+Let's plot the correlations plots for variables with low cardinality (otherwise we couldn't see anything).
+
+```{r warning=FALSE}
+ggpairs(movies, columns = c("overall_score", "runtime", "has_oscar", "mpaa_rating", "time_releases"))
+
+```
+
+* * *
+
+## Part 4: Modeling
+
+Let's start with a Full model, and proceding removing the lesse significant p-value predictor.
+
+This method allow us to build a model with the most statistically significant variables.
+
+```{r}
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + runtime + mpaa_rating + best_pic_nom + top200_box + director + has_oscar + time_releases)
+```
+
+### Check conditions for the model
+
+#### Linear relationship
+
+##### `runtime` variable
+```{r}
+plot(movies_model$residuals ~ movies$runtime)
+```
+
+The residual plot dows not shows a random scatter around zero, so there is no linear relationship.
+
+##### `time_releases` variable
+```{r}
+plot(movies_model$residuals ~ movies$time_releases)
+```
+
+The residual plot shows a random scatter around zero, so there is a linear relationship.
+
+#### Near normal residuals with mean zero
+```{r}
+qqnorm(movies_model$residuals)
+```
+
+```{r}
+hist(movies_model$residuals)
+```
+
+There a high concentration around zero, but this is not a nearly normal distribution.
+
+#### Constant Variability of Residuals
+```{r}
+plot(movies_model$residuals ~ movies_model$fitted)
+```
+
+There is no random scatter.
+
+Let's remove `runtime` due to the lack of linear relationship, and try again.
+
+```{r}
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + mpaa_rating + best_pic_nom + top200_box + director + has_oscar + time_releases)
+```
+
+### Check conditions for the model
+
+#### Linear relationship
+
+##### `time_releases` variable
+```{r}
+plot(movies_model$residuals ~ movies$time_releases)
+```
+
+The residual plot shows a random scatter around zero, so there is a linear relationship.
+
+#### Near normal residuals with mean zero
+```{r}
+qqnorm(movies_model$residuals)
+```
+
+```{r}
+hist(movies_model$residuals)
+```
+
+There a high concentration around zero, but this is not a nearly normal distribution.
+
+#### Constant Variability of Residuals
+```{r}
+plot(movies_model$residuals ~ movies_model$fitted)
+```
+
+The random scatter around zero have improved.
+
+### Stepwise Model Selection
+
+We will use backwards elimination to try to find a better model with Adjusted R^2 criteria.
+
+#### Step 1
+
+```{r}
+
+models <- data.frame(model = NULL, adjRsqtr = NULL, nr_try = NULL)
+i <- 1
+#1 Full
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + mpaa_rating + best_pic_nom + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#2 w/o genre
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + best_pic_nom + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#3 w/o mpaa_rating
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + best_pic_nom + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#4 w/o best_pic_nom
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + mpaa_rating + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#5 w/o top200_box
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + mpaa_rating + best_pic_nom + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#6 w/o director
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + mpaa_rating + best_pic_nom + top200_box + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#7 w/o has_oscar
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + mpaa_rating + best_pic_nom + top200_box + director  + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#8 w/o time_releases
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + genre + mpaa_rating + best_pic_nom + top200_box + director + has_oscar)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+models %>% 
+  arrange(desc(adjRsqtr)) %>% 
+  head(n = 1) %>% 
+  pander()
+
+```
+
+#### Step 2
+```{r}
+
+models <- data.frame(model = NULL, adjRsqtr = NULL, nr_try = NULL)
+i <- 1
+
+#1 Full
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + best_pic_nom + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#1 w/o title_type
+movies_model <- lm(data = movies, formula = overall_score ~ mpaa_rating + best_pic_nom + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#3 w/o mpaa_rating
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + best_pic_nom + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#4 w/o best_pic_nom
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#5 w/o top200_box
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + best_pic_nom + director + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#6 w/o director
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + best_pic_nom + top200_box + has_oscar + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#7 w/o has_oscar
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + best_pic_nom + top200_box + director + time_releases)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+#8 w/o time_releases
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + best_pic_nom + top200_box + director + has_oscar)
+s <- summary(movies_model)
+models <- rbind(models, data.frame(model = (as.character(s$call)[2]), adjRsqtr = s$adj.r.squared, nr_try = i))
+i <- i + 1
+
+models %>% 
+  arrange(desc(adjRsqtr)) %>% 
+  head(n = 1) %>% 
+  pander()
+```
+
+#### Final Model
+```{r}
+movies_model <- lm(data = movies, formula = overall_score ~ title_type + mpaa_rating + best_pic_nom + top200_box + director + has_oscar + time_releases)
+s <- summary(movies_model)
+```
+
+##### Check conditions for the model
+
+###### Linear relationship
+
+####### time_releases` variable
+```{r}
+plot(movies_model$residuals ~ movies$time_releases)
+```
+
+The residual plot shows a random scatter around zero, so there is a linear relationship.
+
+###### Near normal residuals with mean zero
+```{r}
+qqnorm(movies_model$residuals)
+```
+
+```{r}
+hist(movies_model$residuals)
+```
+
+There a high concentration around zero, but this is not a nearly normal distribution.
+
+###### Constant Variability of Residuals
+```{r}
+plot(movies_model$residuals ~ movies_model$fitted)
+```
+
+* * *
+
+As conditions 1) Linear Relationship and 3) Constant Variability of Residuals are fully met and condition 2) Near Normal Residuals with mean zero are partially met, we can assume that this is a good model.
+
+
+### Model Summary
+
+```{r}
+s <- summary(movies_model)
+s
+```
+
+As the model p-value is 1.647e-07 we can assume that this is a good model.
+
+
+## Part 5: Prediction
+
+Predicting the 2016 movie [Ben-Hur (2016)](http://www.imdb.com/title/tt2638144/) with a confidence interval of 95%.
+
+```{r}
+
+new_movie <- data.frame(title_type = "Feature Film",
+                        genre = "Drama",
+                        mpaa_rating = "PG-13",
+                        top200_box = "yes",
+                        best_pic_nom = factor("no", levels = c("no", "yes"), nmax = 2),
+                        director = "Timur Bekmambetov",
+                        time_releases = 0,
+                        has_oscar = factor(FALSE, levels = c(TRUE, FALSE), nmax = 2))
+
+predicted_score <- predict (movies_model, new_movie, interval = "confidence", level = 0.95)
+
+predicted_score %>%
+  as.data.frame() %>%
+  data.table::setnames(., c("Predicted Score", "Lower Bound", "Upper Bound")) %>%
+  pander()
+
+```
+
+Using this data we are 95% confident that the Ben Hur (2016) movie scores 70.78 points on average.
+
+In this prediction we are extrapolating the model, because Ben Hur (2016) is beyond the range of years of the model. 
+
+Linear Regression is not a good modeling tool for extrapolation, so doing this is discouraged to do, due to the unreliable result of extrapolation.
+
+* * *
+
+## Part 6: Conclusion
+
+The data does not provide convince evidence to reject the Null hypothesis in favor of Alternative hypothesis, so the studio could produce a sucessful film without a team made by Oscar winners.
+
+We can predict a score for a movie outside the range of model, but with a wide variance (`r predicted_score[3] - predicted_score[2]` points), this is not recommended.
+
+We can find a simple model with a good adjusted R^2 value.
